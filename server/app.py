@@ -20,6 +20,13 @@ bcrypt.init_app(app)
 
 migrate = Migrate(app, db)
 
+def current_user():
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return None
+
+    return db.session.get(User, user_id)
 
 @app.route("/")
 def index():
@@ -90,14 +97,7 @@ def login():
 
 @app.get("/check_session")
 def check_session():
-    user_id = session.get("user_id")
-
-    if not user_id:
-        return jsonify({
-            "errors": ["Unauthorized."]
-        }), 401
-
-    user = User.query.get(user_id)
+    user = current_user()
 
     if not user:
         return jsonify({
@@ -110,6 +110,118 @@ def check_session():
 def logout():
     session.pop("user_id", None)
     return "", 204
+
+@app.get("/tasks")
+def get_tasks():
+    user = current_user()
+
+    if not user:
+        return jsonify({
+            "errors": ["Unauthorized."]
+        }), 401
+
+    tasks = [task.to_dict() for task in user.tasks]
+
+    return jsonify(tasks), 200
+
+@app.post("/tasks")
+def create_task():
+    user = current_user()
+
+    if not user:
+        return jsonify({
+            "errors": ["Unauthorized."]
+        }), 401
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "errors": ["No input data provided."]
+        }), 400
+
+    try:
+        task = Task(
+            title=data.get("title"),
+            description=data.get("description"),
+            due_date=data.get("due_date"),
+            completed=data.get("completed", False),
+            user_id=user.id
+        )
+
+        db.session.add(task)
+        db.session.commit()
+
+        return jsonify(task.to_dict()), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "errors": [str(e)]
+        }), 400
+
+@app.patch("/tasks/<int:id>")
+def update_task(id):
+    user = current_user()
+
+    if not user:
+        return jsonify({
+            "errors": ["Unauthorized."]
+        }), 401
+
+    task = Task.query.filter_by(id=id, user_id=user.id).first()
+
+    if not task:
+        return jsonify({
+            "errors": ["Task not found."]
+        }), 404
+
+    data = request.get_json()
+
+    try:
+        if "title" in data:
+            task.title = data["title"]
+
+        if "description" in data:
+            task.description = data["description"]
+
+        if "due_date" in data:
+            task.due_date = data["due_date"]
+
+        if "completed" in data:
+            task.completed = data["completed"]
+
+        db.session.commit()
+
+        return jsonify(task.to_dict()), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "errors": [str(e)]
+        }), 400
+    
+@app.delete("/tasks/<int:id>")
+def delete_task(id):
+    user = current_user()
+
+    if not user:
+        return jsonify({
+            "errors": ["Unauthorized."]
+        }), 401
+
+    task = Task.query.filter_by(id=id, user_id=user.id).first()
+
+    if not task:
+        return jsonify({
+            "errors": ["Task not found."]
+        }), 404
+
+    db.session.delete(task)
+    db.session.commit()
+
+    return "", 204
+
 
 
 if __name__ == "__main__":
