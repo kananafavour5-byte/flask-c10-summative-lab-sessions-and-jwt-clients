@@ -103,3 +103,4 @@ class Task(db.Model):
             "due_date": self.due_date,
             "user_id": self.user_id
         }
+    

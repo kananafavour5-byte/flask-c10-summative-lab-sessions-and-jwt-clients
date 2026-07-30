@@ -120,9 +120,22 @@ def get_tasks():
             "errors": ["Unauthorized."]
         }), 401
 
-    tasks = [task.to_dict() for task in user.tasks]
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
 
-    return jsonify(tasks), 200
+    pagination = Task.query.filter_by(user_id=user.id).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    return jsonify({
+        "tasks": [task.to_dict() for task in pagination.items],
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total": pagination.total,
+        "pages": pagination.pages
+    }), 200
 
 @app.post("/tasks")
 def create_task():
