@@ -191,6 +191,11 @@ def update_task(id):
 
     data = request.get_json()
 
+    if not data:
+     return jsonify({
+        "errors":["No input data provided."]
+      }),400
+
     try:
         if "title" in data:
             task.title = data["title"]
