@@ -98,18 +98,16 @@ def login():
 @app.get("/check_session")
 def check_session():
     user = current_user()
+    if user:
+        return jsonify(user.to_dict()), 200
+    return jsonify({}), 200  
 
-    if not user:
-        return jsonify({
-            "errors": ["Unauthorized."]
-        }), 401
-
-    return jsonify(user.to_dict()), 200
 
 @app.delete("/logout")
 def logout():
     session.pop("user_id", None)
-    return "", 204
+    return jsonify({}), 200
+
 
 @app.get("/tasks")
 def get_tasks():
@@ -194,7 +192,7 @@ def update_task(id):
     if not data:
      return jsonify({
         "errors":["No input data provided."]
-      }),400
+      }), 400
 
     try:
         if "title" in data:
