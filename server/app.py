@@ -98,9 +98,13 @@ def login():
 @app.get("/check_session")
 def check_session():
     user = current_user()
-    if user:
-        return jsonify(user.to_dict()), 200
-    return jsonify({}), 200  
+
+    if not user:
+        return jsonify({
+            "errors": ["Unauthorized."]
+        }), 401
+
+    return jsonify(user.to_dict()), 200 
 
 
 @app.delete("/logout")
